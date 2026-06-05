@@ -1,0 +1,44 @@
+# base/recursor-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pdns-recursor
+  namespace: dns-system
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pdns-recursor
+  template:
+    metadata:
+      labels:
+        app: pdns-recursor
+    spec:
+      containers:
+      - name: pdns-recursor
+        image: powerdns/pdns-recursor-49:latest
+        ports:
+        - containerPort: 53
+          protocol: UDP
+        - containerPort: 53
+          protocol: TCP
+        env:
+        - name: PDNSRECURSOR_LOCAL_ADDRESS
+          value: "0.0.0.0"
+        # Allow internal subnets to access this resolver
+        - name: PDNSRECURSOR_ALLOW_FROM
+          value: "10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, fd00::/8"
+        
+        # CONDITIONAL FORWARDING LOGIC:
+        # 1. Forward local zone queries to the on-system authoritative nameserver
+        - name: PDNSRECURSOR_FORWARD_ZONES
+          value: "internal.system.domain=pdns-auth.dns-system.svc.cluster.local:53"
+        # 2. Forward all other public traffic upstream to your provider's DNS service
+        - name: PDNSRECURSOR_FORWARD_ZONES_RECURSE
+          value: ".=UPSTREAM_DNS_IPS"
+        
+        # Strict security rules from the architecture guidelines
+        - name: PDNSRECURSOR_DNSSEC
+          value: "validate" # Enforce cryptographic validation
+        - name: PDNSRECURSOR_USE_CAPITALIZATION
+          value: "yes" # Enforce 0x20-bit encoding randomization

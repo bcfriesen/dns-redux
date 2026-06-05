@@ -1,8 +1,8 @@
-# base/external-recursor-service.yaml
+# base/recursor-service.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: pdns-recursor-external
+  name: pdns-recursor
   namespace: dns-system
 spec:
   type: LoadBalancer
@@ -16,4 +16,4 @@ spec:
       protocol: UDP
       targetPort: 53
   selector:
-    app: pdns-recursor-external
+    app: pdns-recursor

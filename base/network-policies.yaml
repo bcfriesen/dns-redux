@@ -32,47 +32,17 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-auth-from-internal-and-api
+  name: allow-recursor-ingress
   namespace: dns-system
 spec:
   podSelector:
     matchLabels:
-      app: pdns-authoritative
-  policyTypes:
-  - Ingress
-  ingress:
-  - from:
-    - podSelector:
-        matchLabels:
-          app: pdns-recursor-internal
-    ports:
-    - protocol: UDP
-      port: 53
-    - protocol: TCP
-      port: 53
-  - from:
-    - podSelector:
-        matchLabels:
-          app: external-dns
-    ports:
-    - protocol: TCP
-      port: 8081
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-internal-recursor-ingress
-  namespace: dns-system
-spec:
-  podSelector:
-    matchLabels:
-      app: pdns-recursor-internal
+      app: pdns-recursor
   policyTypes:
   - Ingress
   ingress:
   - from:
     - ipBlock:
-        # Only allow RFC 1918 internal subnets to hit the internal recursor
         cidr: 10.0.0.0/8
     - ipBlock:
         cidr: 172.16.0.0/12
@@ -87,18 +57,37 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-external-recursor-ingress
+  name: allow-auth-traffic
   namespace: dns-system
 spec:
   podSelector:
     matchLabels:
-      app: pdns-recursor-external
+      app: pdns-authoritative
   policyTypes:
   - Ingress
   ingress:
-  - ports:
-    # Allow all traffic to hit the external recursor
+  # Allow the single recursor to send forwarded queries
+  - from:
+    - podSelector:
+        matchLabels:
+          app: pdns-recursor
+    ports:
     - protocol: UDP
       port: 53
+    - protocol: TCP
+      port: 53
+  # Allow external-dns to manage records via API
+  - from:
+    - podSelector:
+        matchLabels:
+          app: external-dns
+    ports:
+    - protocol: TCP
+      port: 8081
+  # Allow upstream DNS servers to perform AXFR/IXFR zone transfers
+  - from:
+    - ipBlock:
+        cidr: 0.0.0.0/0 # Restrict this to your specific upstream provider DNS IPs in production
+    ports:
     - protocol: TCP
       port: 53

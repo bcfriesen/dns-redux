@@ -6,10 +6,8 @@ resources:
   - namespace.yaml
   - auth-service.yaml
   - auth-deployment.yaml
-  - internal-recursor-service.yaml
-  - internal-recursor-deployment.yaml
-  - external-recursor-service.yaml
-  - external-recursor-deployment.yaml
+  - recursor-service.yaml
+  - recursor-deployment.yaml
   - external-dns-rbac.yaml
   - external-dns-deployment.yaml
   - postgres-service.yaml
