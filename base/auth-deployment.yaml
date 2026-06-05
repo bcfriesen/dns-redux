@@ -14,12 +14,6 @@ spec:
       labels:
         app: pdns-authoritative
     spec:
-      nodeSelector:
-        node-role.kubernetes.io/control-plane: ""
-      tolerations:
-        - key: node-role.kubernetes.io/control-plane
-          operator: Exists
-          effect: NoSchedule
       containers:
       - name: powerdns
         image: powerdns/pdns-auth-48:latest
