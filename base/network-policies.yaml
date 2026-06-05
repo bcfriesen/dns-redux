@@ -32,30 +32,6 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-recursors-from-ingress
-  namespace: dns-system
-spec:
-  podSelector:
-    matchExpressions:
-      - key: app
-        operator: In
-        values: ["pdns-recursor-internal", "pdns-recursor-external"]
-  policyTypes:
-  - Ingress
-  ingress:
-  - from:
-    - podSelector:
-        matchLabels:
-          app: pdns-ingress-router
-    ports:
-    - protocol: UDP
-      port: 53
-    - protocol: TCP
-      port: 53
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
   name: allow-auth-from-internal-and-api
   namespace: dns-system
 spec:
@@ -85,16 +61,43 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-ingress-router-from-external
+  name: allow-internal-recursor-ingress
   namespace: dns-system
 spec:
   podSelector:
     matchLabels:
-      app: pdns-ingress-router
+      app: pdns-recursor-internal
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - ipBlock:
+        # Only allow RFC 1918 internal subnets to hit the internal recursor
+        cidr: 10.0.0.0/8
+    - ipBlock:
+        cidr: 172.16.0.0/12
+    - ipBlock:
+        cidr: 192.168.0.0/16
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-external-recursor-ingress
+  namespace: dns-system
+spec:
+  podSelector:
+    matchLabels:
+      app: pdns-recursor-external
   policyTypes:
   - Ingress
   ingress:
   - ports:
+    # Allow all traffic to hit the external recursor
     - protocol: UDP
       port: 53
     - protocol: TCP

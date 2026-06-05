@@ -5,7 +5,7 @@ metadata:
   name: pdns-recursor-external
   namespace: dns-system
 spec:
-  type: ClusterIP
+  type: LoadBalancer
   ports:
     - name: dns-tcp
       port: 53

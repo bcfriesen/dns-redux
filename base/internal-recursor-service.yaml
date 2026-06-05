@@ -4,8 +4,11 @@ kind: Service
 metadata:
   name: pdns-recursor-internal
   namespace: dns-system
+  annotations:
+    # This tells GKE to provision a private IP, not a public one
+    networking.gke.io/load-balancer-type: "Internal"
 spec:
-  type: ClusterIP
+  type: LoadBalancer
   ports:
     - name: dns-tcp
       port: 53
