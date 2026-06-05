@@ -17,6 +17,22 @@ spec:
       containers:
       - name: pdns-recursor
         image: powerdns/pdns-recursor-49:latest
+        # OVERRIDE STARTUP: Let the container shell stitch the variable dynamically
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            echo "Evaluating authoritative backend IP..."
+            if [ -z "$PDNS_AUTH_SERVICE_HOST" ]; then
+              echo "ERROR: PDNS_AUTH_SERVICE_HOST is not set. Service might be missing."
+              exit 1
+            fi
+            echo "Found authoritative backend at IP: ${PDNS_AUTH_SERVICE_HOST}"
+            
+            # Export the perfectly structured forwarding rule
+            export PDNSRECURSOR_FORWARD_ZONES="internal.system.domain=${PDNS_AUTH_SERVICE_HOST}:53"
+            
+            # Hand over execution to the native PowerDNS entrypoint binary
+            exec pdns_recursor "$@"
         ports:
         - containerPort: 53
           protocol: UDP
@@ -27,12 +43,6 @@ spec:
           value: "0.0.0.0"
         - name: PDNSRECURSOR_ALLOW_FROM
           value: "10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, fd00::/8"
-        
-        # DYNAMIC EVALUATION:
-        # Kubernetes will replace $(PDNS_AUTH_SERVICE_HOST) with the service's current ClusterIP at startup
-        - name: PDNSRECURSOR_FORWARD_ZONES
-          value: "internal.system.domain=$(PDNS_AUTH_SERVICE_HOST):53"
-          
         - name: PDNSRECURSOR_FORWARD_ZONES_RECURSE
           value: ".=1.1.1.1"
         - name: PDNSRECURSOR_DNSSEC
