@@ -17,7 +17,6 @@ spec:
       containers:
       - name: pdns-recursor
         image: powerdns/pdns-recursor-49:latest
-        # OVERRIDE STARTUP: Let the container shell stitch the variable dynamically
         command: ["/bin/sh", "-c"]
         args:
           - |
@@ -31,8 +30,8 @@ spec:
             # Export the perfectly structured forwarding rule
             export PDNSRECURSOR_FORWARD_ZONES="internal.system.domain=${PDNS_AUTH_SERVICE_HOST}:53"
             
-            # Hand over execution to the native PowerDNS entrypoint binary
-            exec pdns_recursor "$@"
+            # THE FIX: Hand over execution to the image's official entrypoint translator
+            exec /entrypoint.sh "$@"
         ports:
         - containerPort: 53
           protocol: UDP
