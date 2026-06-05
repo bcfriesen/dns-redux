@@ -58,6 +58,6 @@ spec:
           - --webserver=yes
           - --webserver-address=0.0.0.0
           - --webserver-port=8081
-          - --webserver-allow-from=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+          - --webserver-allow-from=127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
           - --api=yes
           - --api-key=super-secret-api-key
