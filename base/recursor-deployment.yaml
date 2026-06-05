@@ -25,20 +25,17 @@ spec:
         env:
         - name: PDNSRECURSOR_LOCAL_ADDRESS
           value: "0.0.0.0"
-        # Allow internal subnets to access this resolver
         - name: PDNSRECURSOR_ALLOW_FROM
           value: "10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, fd00::/8"
         
-        # CONDITIONAL FORWARDING LOGIC:
-        # 1. Forward local zone queries to the on-system authoritative nameserver
+        # DYNAMIC EVALUATION:
+        # Kubernetes will replace $(PDNS_AUTH_SERVICE_HOST) with the service's current ClusterIP at startup
         - name: PDNSRECURSOR_FORWARD_ZONES
-          value: "internal.system.domain=pdns-auth.dns-system.svc.cluster.local:53"
-        # 2. Forward all other public traffic upstream to your provider's DNS service
+          value: "internal.system.domain=$(PDNS_AUTH_SERVICE_HOST):53"
+          
         - name: PDNSRECURSOR_FORWARD_ZONES_RECURSE
-          value: ".=UPSTREAM_DNS_IPS"
-        
-        # Strict security rules from the architecture guidelines
+          value: ".=1.1.1.1"
         - name: PDNSRECURSOR_DNSSEC
-          value: "validate" # Enforce cryptographic validation
+          value: "validate"
         - name: PDNSRECURSOR_USE_CAPITALIZATION
-          value: "yes" # Enforce 0x20-bit encoding randomization
+          value: "yes"
