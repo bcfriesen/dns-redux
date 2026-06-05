@@ -1,0 +1,62 @@
+# base/auth-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pdns-authoritative
+  namespace: dns-system
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pdns-authoritative
+  template:
+    metadata:
+      labels:
+        app: pdns-authoritative
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      containers:
+      - name: powerdns
+        image: powerdns/pdns-auth-48:latest
+        ports:
+        - containerPort: 53
+          protocol: UDP
+        - containerPort: 53
+          protocol: TCP
+        - containerPort: 8081
+          protocol: TCP
+        env:
+        # Postgres Backend Configuration
+        - name: PDNS_launch
+          value: "gpgsql"
+        - name: PDNS_gpgsql_host
+          value: "pdns-postgres.dns-system.svc.cluster.local"
+        - name: PDNS_gpgsql_dbname
+          value: "pdns"
+        - name: PDNS_gpgsql_user
+          value: "pdns"
+        - name: PDNS_gpgsql_password
+          value: "super-secret-db-password"
+        # Core & Synchronization Configuration
+        - name: PDNS_master
+          value: "yes"
+        - name: PDNS_disable_axfr
+          value: "no"
+        - name: PDNS_allow_axfr_ips
+          value: "0.0.0.0/0"
+        # API Configuration
+        - name: PDNS_api
+          value: "yes"
+        - name: PDNS_api_key
+          value: "super-secret-api-key"
+        - name: PDNS_webserver
+          value: "yes"
+        - name: PDNS_webserver_address
+          value: "0.0.0.0"
+        - name: PDNS_webserver_allow_from
+          value: "10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16"

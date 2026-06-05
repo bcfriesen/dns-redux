@@ -1,0 +1,29 @@
+# base/ingress-router-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pdns-ingress-router-config
+  namespace: dns-system
+data:
+  dnsdist.conf: |
+    -- Listen on all interfaces on port 53
+    setLocal('0.0.0.0:53')
+    addLocal('[::]:53')
+
+    -- Define the internal and external upstream recursors (using the Kubernetes Service names)
+    newServer({address="pdns-recursor-internal.dns-system.svc.cluster.local:53", pool="internal"})
+    newServer({address="pdns-recursor-external.dns-system.svc.cluster.local:53", pool="external"})
+
+    -- Define what constitutes "Inside" the system (RFC 1918 and ULA)
+    internal_ips = newNMG()
+    internal_ips:addMask("10.0.0.0/8")
+    internal_ips:addMask("172.16.0.0/12")
+    internal_ips:addMask("192.168.0.0/16")
+    internal_ips:addMask("fd00::/8")
+
+    -- Split-Horizon Routing Logic
+    -- Route queries originating from internal IPs to the internal pool
+    addAction(NetmaskGroupRule(internal_ips, true), PoolAction("internal"))
+    
+    -- Route all other queries to the external pool
+    addAction(AllRule(), PoolAction("external"))

@@ -1,0 +1,22 @@
+# base/ingress-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: system-dns-lb
+  namespace: dns-system
+  annotations:
+    description: "Primary ingress point for all DNS traffic"
+spec:
+  type: LoadBalancer
+  ports:
+    - name: dns-tcp
+      port: 53
+      protocol: TCP
+      targetPort: 53
+    - name: dns-udp
+      port: 53
+      protocol: UDP
+      targetPort: 53
+  selector:
+    # This selector will target the ingress router/distributor deployed in a future step
+    app: pdns-ingress-router

@@ -1,0 +1,7 @@
+# base/namespace.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dns-system
+  labels:
+    environment: production

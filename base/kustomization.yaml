@@ -1,0 +1,21 @@
+# base/kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespace.yaml
+  - ingress-service.yaml
+  - auth-service.yaml
+  - auth-deployment.yaml
+  - internal-recursor-service.yaml
+  - internal-recursor-deployment.yaml
+  - external-recursor-service.yaml
+  - external-recursor-deployment.yaml
+  - ingress-router-config.yaml
+  - ingress-router-deployment.yaml
+  - external-dns-rbac.yaml
+  - external-dns-deployment.yaml
+  - postgres-service.yaml
+  - postgres-init-config.yaml
+  - postgres-deployment.yaml
+  - network-policies.yaml

@@ -1,0 +1,35 @@
+# base/ingress-router-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pdns-ingress-router
+  namespace: dns-system
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pdns-ingress-router
+  template:
+    metadata:
+      labels:
+        app: pdns-ingress-router
+    spec:
+      containers:
+      - name: dnsdist
+        image: powerdns/dnsdist-18:latest
+        ports:
+        - containerPort: 53
+          protocol: UDP
+        - containerPort: 53
+          protocol: TCP
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/dnsdist/conf.d/
+          readOnly: true
+      volumes:
+      - name: config-volume
+        configMap:
+          name: pdns-ingress-router-config
+          items:
+          - key: dnsdist.conf
+            path: dnsdist.conf

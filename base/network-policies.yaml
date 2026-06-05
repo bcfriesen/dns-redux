@@ -1,0 +1,101 @@
+# base/network-policies.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: dns-system
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-postgres-from-auth
+  namespace: dns-system
+spec:
+  podSelector:
+    matchLabels:
+      app: pdns-postgres
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: pdns-authoritative
+    ports:
+    - protocol: TCP
+      port: 5432
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-recursors-from-ingress
+  namespace: dns-system
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values: ["pdns-recursor-internal", "pdns-recursor-external"]
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: pdns-ingress-router
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-auth-from-internal-and-api
+  namespace: dns-system
+spec:
+  podSelector:
+    matchLabels:
+      app: pdns-authoritative
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: pdns-recursor-internal
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  - from:
+    - podSelector:
+        matchLabels:
+          app: external-dns
+    ports:
+    - protocol: TCP
+      port: 8081
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-router-from-external
+  namespace: dns-system
+spec:
+  podSelector:
+    matchLabels:
+      app: pdns-ingress-router
+  policyTypes:
+  - Ingress
+  ingress:
+  - ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53

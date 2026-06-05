@@ -1,0 +1,35 @@
+# base/postgres-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pdns-postgres
+  namespace: dns-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pdns-postgres
+  template:
+    metadata:
+      labels:
+        app: pdns-postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        env:
+        - name: POSTGRES_USER
+          value: "pdns"
+        - name: POSTGRES_PASSWORD
+          value: "super-secret-db-password"
+        - name: POSTGRES_DB
+          value: "pdns"
+        ports:
+        - containerPort: 5432
+        volumeMounts:
+        - name: init-db
+          mountPath: /docker-entrypoint-initdb.d/
+      volumes:
+      - name: init-db
+        configMap:
+          name: pdns-postgres-init
