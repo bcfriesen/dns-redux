@@ -15,5 +15,10 @@ spec:
       port: 53
       protocol: UDP
       targetPort: 53
+    # THE FIX: Expose the Webserver/API port to internal cluster pods
+    - name: api-tcp
+      port: 8081
+      protocol: TCP
+      targetPort: 8081
   selector:
     app: pdns-authoritative
