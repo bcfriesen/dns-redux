@@ -25,7 +25,7 @@ data:
       ttl                   INT DEFAULT NULL,
       prio                  INT DEFAULT NULL,
       disabled              BOOLEAN DEFAULT false,
-      ordername             VARCHAR(255) BINARY DEFAULT NULL,
+      ordername             VARCHAR(255) DEFAULT NULL,
       auth                  BOOLEAN DEFAULT true
     );
     CREATE INDEX nametype_index ON records(name,type);
