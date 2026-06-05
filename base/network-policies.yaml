@@ -42,6 +42,10 @@ spec:
   - Ingress
   ingress:
   - from:
+    # 1. NEW: Explicitly allow ALL pods from ANY namespace inside the cluster
+    - namespaceSelector: {}
+      podSelector: {}
+    # 2. RETAIN: Allow external private endpoints (on-prem networks, hardware nodes)
     - ipBlock:
         cidr: 10.0.0.0/8
     - ipBlock:
