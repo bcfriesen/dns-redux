@@ -6,6 +6,8 @@ metadata:
   namespace: dns-system
 spec:
   type: LoadBalancer
+  # Enforces GKE to use the modern controller supporting mixed protocols
+  loadBalancerClass: networking.gke.io/l4-regional-external
   ports:
     - name: dns-tcp
       port: 53
