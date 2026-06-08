@@ -1,0 +1,33 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pdns-zone-seeder
+  namespace: dns-system
+  annotations:
+    # Tells ArgoCD to run this job automatically after the API is healthy
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: seeder
+        image: curlimages/curl:latest
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            echo "Seeding zones into PowerDNS Authoritative..."
+            
+            # Define the zones you want GitOps to enforce
+            ZONES="system.nersc.gov. 10.in-addr.arpa. 172.16.in-addr.arpa."
+            
+            for ZONE in $ZONES; do
+              echo "Checking/Creating zone: $ZONE"
+              curl -s -X POST \
+                -H "X-API-Key: super-secret-api-key" \
+                -H "Content-Type: application/json" \
+                -d "{\"name\": \"$ZONE\", \"kind\": \"Native\", \"nameservers\": [\"ns1.system.nersc.gov.\"]}" \
+                http://pdns-auth.dns-system.svc.cluster.local:8081/api/v1/servers/localhost/zones || true
+            done
+            echo "Zone seeding complete!"

@@ -1,0 +1,96 @@
+# base/mock-smd.yaml
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: smd-mock-data
+  namespace: dns-system
+data:
+  # Configure Nginx to serve the JSON payload at the exact OpenCHAMI URI
+  default.conf: |
+    server {
+        listen 80;
+        location /hsm/v2/Inventory/EthernetInterfaces {
+            default_type application/json;
+            alias /usr/share/nginx/html/ethernet-interfaces.json;
+        }
+    }
+  # The mocked OpenCHAMI SMD hardware payload
+  ethernet-interfaces.json: |
+    [
+      {
+        "ID": "mac-addr-1",
+        "ComponentID": "x1000c1s1b0n0",
+        "IPAddresses": [
+          { "IPAddress": "10.250.1.10", "Network": "HSN" },
+          { "IPAddress": "10.250.2.10", "Network": "HSN" }
+        ]
+      },
+      {
+        "ID": "mac-addr-2",
+        "ComponentID": "x1000c1s1b0n0",
+        "IPAddresses": [
+          { "IPAddress": "172.16.1.10", "Network": "CAN" }
+        ]
+      },
+      {
+        "ID": "mac-addr-3",
+        "ComponentID": "x1000c1s1b0n0",
+        "IPAddresses": [
+          { "IPAddress": "192.168.1.10", "Network": "BMC" }
+        ]
+      },
+      {
+        "ID": "mac-addr-4",
+        "ComponentID": "x1000c1s1b0n1",
+        "IPAddresses": [
+          { "IPAddress": "10.250.1.11", "Network": "HSN" },
+          { "IPAddress": "172.16.1.11", "Network": "CAN" }
+        ]
+      }
+    ]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smd-mock
+  namespace: dns-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: smd-mock
+  template:
+    metadata:
+      labels:
+        app: smd-mock
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: config
+          mountPath: /etc/nginx/conf.d/default.conf
+          subPath: default.conf
+        - name: config
+          mountPath: /usr/share/nginx/html/ethernet-interfaces.json
+          subPath: ethernet-interfaces.json
+      volumes:
+      - name: config
+        configMap:
+          name: smd-mock-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: smd-mock
+  namespace: dns-system
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: smd-mock

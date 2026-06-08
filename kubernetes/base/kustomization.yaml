@@ -14,3 +14,5 @@ resources:
   - postgres-init-config.yaml
   - postgres-deployment.yaml
   - network-policies.yaml
+  - zone-seeder-job.yaml
+  - mock-smd.yaml
