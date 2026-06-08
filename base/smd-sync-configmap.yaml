@@ -1,0 +1,100 @@
+apiVersion: v1
+data:
+  smd_sync.py: "import os\nimport sys\nimport requests\nimport ipaddress\n\n# ==========================================\n#
+    1. Configuration & Credentials\n# ==========================================\nSMD_BASE_URL
+    = os.getenv(\"SMD_URL\", \"https://api.openchami.cluster/hsm/v2\")\nSMD_TOKEN
+    = os.getenv(\"SMD_TOKEN\", \"your_jwt_access_token_here\")\nSMD_VERIFY_SSL = False
+    \n\nPDNS_API_URL = os.getenv(\"PDNS_API_URL\", \"http://localhost:8081/api/v1/servers/localhost/zones\")\nPDNS_API_KEY
+    = os.getenv(\"PDNS_API_KEY\", \"super-secret-api-key\")\nBASE_ZONE = os.getenv(\"BASE_ZONE\",
+    \"system.nersc.gov.\")\n\nNETWORK_MAPPINGS = {\n    \"HSN\": \"hsn\",\n    \"CAN\":
+    \"can\",\n    \"HMN\": \"oob\",\n    \"BMC\": \"oob\",\n    \"OOB\": \"oob\"\n}\n\n#
+    The subdomains this script is allowed to manage (used to safely isolate deletions)\nMANAGED_SUFFIXES
+    = tuple(f\".{sub}.{BASE_ZONE}\" for sub in NETWORK_MAPPINGS.values())\n\n# ==========================================\n#
+    2. PowerDNS Helper Functions\n# ==========================================\ndef
+    get_pdns_headers():\n    return {\"X-API-Key\": PDNS_API_KEY, \"Content-Type\":
+    \"application/json\"}\n\ndef fetch_all_pdns_zones():\n    \"\"\"Fetches all zones
+    from PowerDNS to route PTR records to the correct reverse zone.\"\"\"\n    try:\n
+    \       resp = requests.get(PDNS_API_URL, headers=get_pdns_headers(), timeout=10)\n
+    \       resp.raise_for_status()\n        return {z['name']: z['id'] for z in resp.json()}\n
+    \   except Exception as e:\n        print(f\"[!] Failed to fetch zones from PowerDNS:
+    {e}\")\n        sys.exit(1)\n\ndef fetch_zone_records(zone_id):\n    \"\"\"Fetches
+    all existing RRsets for a specific zone.\"\"\"\n    try:\n        resp = requests.get(f\"{PDNS_API_URL}/{zone_id}\",
+    headers=get_pdns_headers(), timeout=10)\n        resp.raise_for_status()\n        return
+    resp.json().get('rrsets', [])\n    except Exception as e:\n        print(f\"[!]
+    Failed to fetch records for zone {zone_id}: {e}\")\n        return []\n\ndef find_best_zone(domain_name,
+    available_zones):\n    \"\"\"Finds the longest matching zone for a given domain
+    name (crucial for reverse IPs).\"\"\"\n    parts = domain_name.strip('.').split('.')\n
+    \   for i in range(len(parts)):\n        candidate = '.'.join(parts[i:]) + '.'\n
+    \       if candidate in available_zones:\n            return candidate\n    return
+    None\n\n# ==========================================\n# 3. OpenCHAMI Fetch & Calculate
+    Desired State\n# ==========================================\ndef calculate_desired_state(available_zones):\n
+    \   print(f\"[*] Fetching Inventory from OpenCHAMI...\")\n    headers = {\"Authorization\":
+    f\"Bearer {SMD_TOKEN}\"}\n    try:\n        resp = requests.get(f\"{SMD_BASE_URL}/Inventory/EthernetInterfaces\",
+    headers=headers, verify=SMD_VERIFY_SSL, timeout=10)\n        resp.raise_for_status()\n
+    \       interfaces = resp.json()\n    except Exception as e:\n        print(f\"[!]
+    SMD API Error: {e}\")\n        sys.exit(1)\n\n    # State structure: { zone_id:
+    { record_name: {\"type\": \"...\", \"records\": [...]} } }\n    desired_state
+    = {}\n    interface_counters = {}\n\n    for iface in interfaces:\n        comp_id
+    = iface.get(\"ComponentID\")\n        if not comp_id:\n            continue\n
+    \           \n        for ip_info in iface.get(\"IPAddresses\", []):\n            ip_str
+    = ip_info.get(\"IPAddress\")\n            net_tag = ip_info.get(\"Network\", \"\").upper()\n
+    \           subdomain = NETWORK_MAPPINGS.get(net_tag)\n            \n            if
+    ip_str and subdomain:\n                key = (comp_id, subdomain)\n                idx
+    = interface_counters.get(key, 0)\n                interface_counters[key] = idx
+    + 1\n                \n                # Forward FQDN formatting\n                if
+    subdomain == \"hsn\" or idx > 0:\n                    fqdn = f\"{comp_id}-{idx}.{subdomain}.{BASE_ZONE}\"\n
+    \               else:\n                    fqdn = f\"{comp_id}.{subdomain}.{BASE_ZONE}\"\n
+    \               \n                # 1. Map Forward (A) Record\n                fwd_zone
+    = find_best_zone(fqdn, available_zones)\n                if fwd_zone:\n                    desired_state.setdefault(fwd_zone,
+    {})[fqdn] = {\n                        \"type\": \"A\", \"content\": ip_str\n
+    \                   }\n\n                # 2. Map Reverse (PTR) Record\n                try:\n
+    \                   reverse_name = ipaddress.ip_address(ip_str).reverse_pointer
+    + '.'\n                    rev_zone = find_best_zone(reverse_name, available_zones)\n
+    \                   if rev_zone:\n                        desired_state.setdefault(rev_zone,
+    {})[reverse_name] = {\n                            \"type\": \"PTR\", \"content\":
+    fqdn\n                        }\n                    else:\n                        print(f\"[!]
+    Warning: No reverse zone found in PowerDNS for {ip_str} ({reverse_name})\")\n
+    \               except ValueError:\n                    pass # Invalid IP address
+    format\n\n    return desired_state\n\n# ==========================================\n#
+    4. Reconcile & Push to PowerDNS\n# ==========================================\ndef
+    synchronize_dns(available_zones, desired_state):\n    for zone_name, zone_id in
+    available_zones.items():\n        desired_rrsets = desired_state.get(zone_name,
+    {})\n        existing_rrsets = fetch_zone_records(zone_id)\n        \n        patches
+    = []\n        \n        # A. Find records to DELETE (Exists in PDNS, but not in
+    SMD desired state)\n        for rrset in existing_rrsets:\n            rtype =
+    rrset['type']\n            name = rrset['name']\n            \n            # Only
+    evaluate A and PTR records\n            if rtype not in [\"A\", \"PTR\"]:\n                continue\n
+    \               \n            # Safely scope deletions: Only touch records belonging
+    to our target networks\n            is_managed = False\n            if rtype ==
+    \"A\" and name.endswith(MANAGED_SUFFIXES):\n                is_managed = True\n
+    \           elif rtype == \"PTR\" and rrset.get('records'):\n                #
+    For PTRs, check if the FQDN it points to ends with our managed suffixes\n                ptr_target
+    = rrset['records'][0]['content']\n                if ptr_target.endswith(MANAGED_SUFFIXES):\n
+    \                   is_managed = True\n\n            if is_managed and name not
+    in desired_rrsets:\n                print(f\" [-] Wiping orphaned record: {name}
+    ({rtype})\")\n                patches.append({\n                    \"name\":
+    name,\n                    \"type\": rtype,\n                    \"changetype\":
+    \"DELETE\"\n                })\n\n        # B. Find records to ADD / UPDATE\n
+    \       for name, data in desired_rrsets.items():\n            # PowerDNS handles
+    idempotent REPLACE efficiently. We push all desired.\n            patches.append({\n
+    \               \"name\": name,\n                \"type\": data[\"type\"],\n                \"ttl\":
+    300,\n                \"changetype\": \"REPLACE\",\n                \"records\":
+    [{\"content\": data[\"content\"], \"disabled\": False}]\n            })\n\n        #
+    C. Push the Batch Transaction\n        if patches:\n            print(f\"[*] Pushing
+    {len(patches)} transactions to zone '{zone_name}'...\")\n            try:\n                resp
+    = requests.patch(f\"{PDNS_API_URL}/{zone_id}\", headers=get_pdns_headers(), json={\"rrsets\":
+    patches}, timeout=10)\n                resp.raise_for_status()\n            except
+    requests.exceptions.RequestException as e:\n                print(f\"[!] Failed
+    to sync zone {zone_name}: {e}\")\n                if e.response is not None:\n
+    \                   print(f\"    PDNS Error: {e.response.text}\")\n        else:\n
+    \           print(f\"[*] Zone '{zone_name}' is already perfectly in sync.\")\n\n#
+    ==========================================\n# Execution Entrypoint\n# ==========================================\nif
+    __name__ == \"__main__\":\n    import urllib3\n    if not SMD_VERIFY_SSL:\n        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)\n
+    \       \n    print(\"--- Starting OpenCHAMI to PowerDNS Hard Sync ---\")\n    pdns_zones
+    = fetch_all_pdns_zones()\n    desired_state = calculate_desired_state(pdns_zones)\n
+    \   synchronize_dns(pdns_zones, desired_state)\n    print(\"--- Synchronization
+    Complete ---\")\n"
+kind: ConfigMap
+metadata:
+  name: smd-sync-script
+  namespace: dns-system

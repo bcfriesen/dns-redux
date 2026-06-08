@@ -1,0 +1,43 @@
+# base/smd-sync-cronjob.yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: smd-pdns-sync
+  namespace: dns-system
+spec:
+  schedule: "*/5 * * * *"  # Run every 5 minutes
+  concurrencyPolicy: Forbid  # Prevent overlapping syncs
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: sync-runner
+            image: python:3.11-slim
+            # Install the requests library dynamically, then run the mounted script
+            command: ["/bin/sh", "-c"]
+            args:
+              - |
+                pip install --no-cache-dir requests && \
+                python /scripts/smd_sync.py
+            env:
+              # Point to the Mock SMD service (change this to real OpenCHAMI in prod)
+              - name: SMD_URL
+                value: "http://smd-mock.dns-system.svc.cluster.local/hsm/v2"
+              - name: SMD_TOKEN
+                value: "mock-token-ignored"
+              # Point to the internal PowerDNS API service
+              - name: PDNS_API_URL
+                value: "http://pdns-auth.dns-system.svc.cluster.local:8081/api/v1/servers/localhost/zones"
+              - name: PDNS_API_KEY
+                value: "super-secret-api-key"
+            volumeMounts:
+            - name: script-volume
+              mountPath: /scripts
+          restartPolicy: OnFailure
+          volumes:
+          - name: script-volume
+            configMap:
+              name: smd-sync-script
