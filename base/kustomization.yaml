@@ -16,3 +16,5 @@ resources:
   - network-policies.yaml
   - zone-seeder-job.yaml
   - mock-smd.yaml
+  - smd-sync-configmap.yaml
+  - smd-sync-cronjob.yaml
