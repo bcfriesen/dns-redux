@@ -20,7 +20,6 @@ spec:
           - name: sync-runner
             image: us-central1-docker.pkg.dev/aesthetic-guild-393216/n10/smd-pdns-sync:v1.0.1
             imagePullPolicy: IfNotPresent
-            command: ["/bin/sh", "-c"]
             env:
               # Point to the Mock SMD service (change this to real OpenCHAMI in prod)
               - name: SMD_URL
