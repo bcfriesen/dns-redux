@@ -117,3 +117,24 @@ spec:
       ports:
         - protocol: TCP
           port: 8081
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-automation-to-smd
+  namespace: dns-system
+spec:
+  podSelector:
+    matchLabels:
+      app: smd-mock
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+      - podSelector:
+          # Re-using the label we already applied to the CronJob
+          matchLabels:
+            access-pdns-api: "true"
+      ports:
+        - protocol: TCP
+          port: 80
