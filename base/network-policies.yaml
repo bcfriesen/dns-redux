@@ -105,7 +105,7 @@ spec:
   # Target the PowerDNS Authoritative backend
   podSelector:
     matchLabels:
-      app: pdns-auth
+      app: pdns-authoritative
   policyTypes:
     - Ingress
   ingress:
