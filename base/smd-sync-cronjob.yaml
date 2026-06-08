@@ -18,7 +18,7 @@ spec:
         spec:
           containers:
           - name: sync-runner
-            image: us-central1-docker.pkg.dev/aesthetic-guild-393216/n10/smd-pdns-sync:v1.0.0
+            image: us-central1-docker.pkg.dev/aesthetic-guild-393216/n10/smd-pdns-sync:v1.0.1
             imagePullPolicy: IfNotPresent
             command: ["/bin/sh", "-c"]
             env:
