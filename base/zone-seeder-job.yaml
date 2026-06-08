@@ -9,6 +9,9 @@ metadata:
     argocd.argoproj.io/hook-delete-policy: HookSucceeded
 spec:
   template:
+    metadata:
+      labels:
+        access-pdns-api: "true"
     spec:
       restartPolicy: OnFailure
       containers:

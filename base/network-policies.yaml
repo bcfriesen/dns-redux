@@ -95,3 +95,25 @@ spec:
     ports:
     - protocol: TCP
       port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-automation-to-pdns-api
+  namespace: dns-system
+spec:
+  # Target the PowerDNS Authoritative backend
+  podSelector:
+    matchLabels:
+      app: pdns-auth
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow traffic ONLY from pods with our new label
+    - from:
+      - podSelector:
+          matchLabels:
+            access-pdns-api: "true"
+      ports:
+        - protocol: TCP
+          port: 8081

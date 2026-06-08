@@ -12,6 +12,9 @@ spec:
   jobTemplate:
     spec:
       template:
+        metadata:
+          labels:
+            access-pdns-api: "true"
         spec:
           containers:
           - name: sync-runner
