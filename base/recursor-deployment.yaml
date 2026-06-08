@@ -30,7 +30,7 @@ spec:
             exec pdns_recursor \
               --local-address=0.0.0.0 \
               --allow-from="10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, fd00::/8" \
-              --forward-zones="internal.system.domain=${PDNS_AUTH_SERVICE_HOST}:53" \
+              --forward-zones="internal.system.domain=${PDNS_AUTH_SERVICE_HOST}:53, system.nersc.gov=${PDNS_AUTH_SERVICE_HOST}:53, 10.in-addr.arpa=${PDNS_AUTH_SERVICE_HOST}:53, 16.172.in-addr.arpa=${PDNS_AUTH_SERVICE_HOST}:53, 168.192.in-addr.arpa=${PDNS_AUTH_SERVICE_HOST}:53" \
               --forward-zones-recurse=".=1.1.1.1" \
               --dnssec=off
         ports:
