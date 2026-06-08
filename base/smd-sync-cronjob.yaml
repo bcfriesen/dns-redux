@@ -18,13 +18,9 @@ spec:
         spec:
           containers:
           - name: sync-runner
-            image: python:3.11-slim
-            # Install the requests library dynamically, then run the mounted script
+            image: us-central1-docker.pkg.dev/YOUR_PROJECT_ID/YOUR_REPO_NAME/smd-pdns-sync:v1.0.0
+            imagePullPolicy: IfNotPresent
             command: ["/bin/sh", "-c"]
-            args:
-              - |
-                pip install --no-cache-dir requests && \
-                python /scripts/smd_sync.py
             env:
               # Point to the Mock SMD service (change this to real OpenCHAMI in prod)
               - name: SMD_URL
@@ -36,11 +32,4 @@ spec:
                 value: "http://pdns-auth.dns-system.svc.cluster.local:8081/api/v1/servers/localhost/zones"
               - name: PDNS_API_KEY
                 value: "super-secret-api-key"
-            volumeMounts:
-            - name: script-volume
-              mountPath: /scripts
           restartPolicy: OnFailure
-          volumes:
-          - name: script-volume
-            configMap:
-              name: smd-sync-script
